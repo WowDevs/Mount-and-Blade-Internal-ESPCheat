@@ -3,6 +3,8 @@
 #endif
 
 #include "stdafx.h"
+#include "Utility.h"
+#include "Directx9Hack.h"
 #include <detours.h>
 #include <windows.h>
 #include <vector>
@@ -16,103 +18,15 @@
 
 using namespace std;
 
-LPDIRECT3DVERTEXBUFFER9 pStreamData;
-vector<DWORD> BASETEX;
-LPDIRECT3DBASETEXTURE9 BTEX = NULL;
-D3DVIEWPORT9 viewPort;
-D3DVIEWPORT9 Vpt;
-LPDIRECT3DTEXTURE9 pTx = NULL;
+LPDIRECT3DTEXTURE9 pTx,green,red;
 D3DLOCKED_RECT d3dlr;
-LPDIRECT3DTEXTURE9 Green = NULL;
-LPD3DXFONT pFont = NULL;
-UINT iStride = 0;
-UINT iBaseTex = 0;
-int number = 0;
+Directx9Hack directx9Hack;
+D3DVIEWPORT9 vpt;
+LPD3DXFONT pFont;
+UINT iBaseTex;
 char strbuff[260];
-bool bTex = false, bCham = false;
-LPDIRECT3DTEXTURE9 cFront, cBack;
-DWORD* pdwVTable;
-bool color = true;
-bool chams = false;
-bool test = false;
-
-struct ModelInfo_t
-{
-	int X, Y, Team;
-	char* Name;
-};
-
-std::vector<ModelInfo_t>ModelInfo;
-
-void AddModel(IDirect3DDevice9* Device, char* oName, int oTeam)
-{
-	D3DVIEWPORT9 Viewport;
-	D3DXMATRIX ViewProjectionMatrix, LocalToWorld, WorldToLocal;
-	D3DXVECTOR3 Vector3D(0, 0, 0), Vector2D;
-	Device->GetVertexShaderConstantF(7, ViewProjectionMatrix, 1);//change this to match your game matrix
-	Device->GetVertexShaderConstantF(8, LocalToWorld, 1);//change this to match your game matrix
-	Device->GetViewport(&Viewport);
-	D3DXMatrixIdentity(&WorldToLocal);
-	D3DXVec3Project(&Vector2D, &Vector3D, &Viewport, &ViewProjectionMatrix, &LocalToWorld, &WorldToLocal);
-	if (Vector2D.z < 1.0f)
-	{
-		ModelInfo_t pModelInfo = { static_cast<int>(Vector2D.x),static_cast<int>(Vector2D.y),oTeam,oName };
-		ModelInfo.push_back(pModelInfo);
-	}
-}
-
-HRESULT GenerateTexture(LPDIRECT3DDEVICE9 pDevice, IDirect3DTexture9 **ppD3Dtex, DWORD colour32)
-{
-	if (FAILED(pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A4R4G4B4, D3DPOOL_MANAGED, ppD3Dtex, NULL)))
-		return E_FAIL;
-
-	WORD colour16 = ((WORD)((colour32 >> 28) & 0xF) << 12)
-		| (WORD)(((colour32 >> 20) & 0xF) << 8)
-		| (WORD)(((colour32 >> 12) & 0xF) << 4)
-		| (WORD)(((colour32 >> 4) & 0xF) << 0);
-
-	D3DLOCKED_RECT d3dlr;
-	(*ppD3Dtex)->LockRect(0, &d3dlr, 0, 0);
-	WORD *pDst16 = (WORD*)d3dlr.pBits;
-
-	for (int xy = 0; xy < 8 * 8; xy++)
-		*pDst16++ = colour16;
-
-	(*ppD3Dtex)->UnlockRect(0);
-
-	return S_OK;
-}
-
-void doDisassembleShader(LPDIRECT3DDEVICE9 pDevice, char* FileName)
-{
-	ofstream oLogFile(FileName, ios::trunc);
-
-	if (!oLogFile.is_open())
-		return;
-
-	IDirect3DVertexShader9* pShader;
-
-	pDevice->GetVertexShader(&pShader);
-
-	UINT pSizeOfData;
-
-	pShader->GetFunction(NULL, &pSizeOfData);
-
-	BYTE* pData = new BYTE[pSizeOfData];
-
-	pShader->GetFunction(pData, &pSizeOfData);
-
-	LPD3DXBUFFER bOut;
-
-	D3DXDisassembleShader(reinterpret_cast<DWORD*>(pData), (BOOL)NULL, (LPCSTR)NULL, &bOut);
-
-	oLogFile << static_cast<char*>(bOut->GetBufferPointer()) << std::endl;
-	oLogFile.close();
-
-	delete[] pData;
-
-	pShader->Release();
-}
+int number;
+bool a, color, chams;
 
 typedef HRESULT(WINAPI* tEndScene)(LPDIRECT3DDEVICE9 pDevice);
 tEndScene oEndScene;
@@ -120,75 +34,73 @@ tEndScene oEndScene;
 typedef HRESULT(WINAPI* tDIP)(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base, UINT Min, UINT Num, UINT Start, UINT Prim);
 tDIP oDIP;
 
-typedef HRESULT(WINAPI* tReset)(DWORD RenderTargetIndex, IDirect3DSurface9 *pRenderTarget);
-tReset oReset;
+void printMatrix(D3DXMATRIX matrix)
+{
+	if (a) {
+		printf("ViewProjectionWorldMatrix \n");
+		for (size_t i = 0; i < 4; i++)
+		{
+			for (size_t t = 0; t < 4; t++)
+			{
+				cout << "\t" << matrix.m[t][i];
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
+}
 
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
-	//if (color)
-	//{
-	//	GenerateTexture(pDevice, &cBack, D3DCOLOR_ARGB(255, 255, 0, 0));
-	//	GenerateTexture(pDevice, &cFront, D3DCOLOR_ARGB(0, 255, 255, 0));
-	//	color = false;
-	//}
+	if (color)
+	{
+		directx9Hack.GenerateTexture(pDevice, &red, D3DCOLOR_ARGB(255, 255, 0, 0));
 
-	//if (GetAsyncKeyState(VK_F1) & 1) // if we click f1
-	//{
-	//	chams = !chams;
-	//}
+		color = false;
+	}
 
-	//pDevice->GetViewport(&Vpt);
+	if (GetAsyncKeyState(VK_F1) & 1)
+	{
+		chams = !chams;
+	}
 
-	//RECT FRect = { Vpt.Width - 250,Vpt.Height - 300,
-	//	Vpt.Width,Vpt.Height };
+	pDevice->GetViewport(&vpt);
 
-	//if (Green == NULL)
-	//	if (pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A8R8G8B8,
-	//		D3DPOOL_DEFAULT, &Green, NULL) == S_OK)
-	//		if (pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A8R8G8B8,
-	//			D3DPOOL_SYSTEMMEM, &pTx, NULL) == S_OK)
-	//			if (pTx->LockRect(0, &d3dlr, 0, D3DLOCK_DONOTWAIT |
-	//				D3DLOCK_NOSYSLOCK) == S_OK)
-	//			{
-	//				for (UINT xy = 0; xy < 8 * 8; xy++)
-	//					((PDWORD)d3dlr.pBits)[xy] = 0xFF00FF00;
+	RECT FRect = { vpt.Width - 250,vpt.Height - 300,
+		vpt.Width,vpt.Height };
 
-	//				pTx->UnlockRect(0);
-	//				pDevice->UpdateTexture(pTx, Green);
-	//				pTx->Release();
-	//			}
+	if (green == NULL)
+		if (pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A8R8G8B8,
+			D3DPOOL_DEFAULT, &green, NULL) == S_OK)
+			if (pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A8R8G8B8,
+				D3DPOOL_SYSTEMMEM, &pTx, NULL) == S_OK)
+				if (pTx->LockRect(0, &d3dlr, 0, D3DLOCK_DONOTWAIT |
+					D3DLOCK_NOSYSLOCK) == S_OK)
+				{
+					for (UINT xy = 0; xy < 8 * 8; xy++)
+						((PDWORD)d3dlr.pBits)[xy] = 0xFF00FF00;
 
-	//if (pFont == NULL)
-	//	D3DXCreateFontA(pDevice, 16, 0, 700, 0, 0, 1, 0,
-	//		0, DEFAULT_PITCH | FF_DONTCARE, "Calibri", &pFont);
+					pTx->UnlockRect(0);
+					pDevice->UpdateTexture(pTx, green);
+					pTx->Release();
+				}
 
-	//sprintf(strbuff, "Num of Textures: %i\nStride: %i\nBase Tex Num: %i\n\nSTRIDE LOGGER V1\n\n" \
-		//	"Log Enable: %i\n\nNUM1: Stride++\nNUM2: Stride--\nNUM3: BaseTexNum++" \
-	//	"\nNUM4: BaseTexNum--\nNUM0: Log On/Off", \
-	//	BASETEX.size(), iStride, iBaseTex + 1);
+	if (pFont == NULL)
+		D3DXCreateFontA(pDevice, 16, 0, 700, 0, 0, 1, 0,
+			0, DEFAULT_PITCH | FF_DONTCARE, "Calibri", &pFont);
 
-//if (pFont)
-//	pFont->DrawTextA(0, strbuff, -1, &FRect,
-//		DT_CENTER | DT_NOCLIP, 0xFF00FF00);
+	sprintf(strbuff, "", iBaseTex + 1);
 
-//if (GetAsyncKeyState(VK_NUMPAD1) & 1)
-//{
-//	iStride++; BASETEX.clear(); iBaseTex = 0;
-//}
+if (pFont)
+	pFont->DrawTextA(0, strbuff, -1, &FRect,
+		DT_CENTER | DT_NOCLIP, 0xFF00FF00);
 
-//if (GetAsyncKeyState(VK_NUMPAD2) & 1)
-//	if (iStride > 0)
-//	{
-//		iStride--; BASETEX.clear(); iBaseTex = 0;
-//	};
+if (GetAsyncKeyState(VK_NUMPAD3) & 1)
+	iBaseTex++;
 
-//if (GetAsyncKeyState(VK_NUMPAD3) & 1)
-//	if (iBaseTex < BASETEX.size() - 1)iBaseTex++;
-
-//if (GetAsyncKeyState(VK_NUMPAD4) & 1)
-//	if (iBaseTex > 0)
-//		iBaseTex--;
-	printf("hooked");
+if (GetAsyncKeyState(VK_NUMPAD4) & 1)
+	if (iBaseTex > 0)
+		iBaseTex--;
 
 	return oEndScene(pDevice);
 }
@@ -203,79 +115,48 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 		(0, &streamData, &offset, &stride) == S_OK)
 		streamData->Release();
 	
-	if (chams)
+	if (!chams)
 	{
-		if (iStride == stride && number == 0)
+		if (68 == stride && number == 0)
 		{
 			pDevice->SetRenderState(D3DRS_ZENABLE, false);
 
 			for (size_t i = 0; i < 10; i++)
 			{
-				pDevice->SetTexture(i, cBack);
+				pDevice->SetTexture(i, red);
 			}
 
 			number = 1;
 
-			doDisassembleShader(pDevice, "shader.txt");
+			D3DXMATRIX viewProjectionMatrix,world;
 
-			D3DXMATRIX ViewProjectionMatrix, view, world, ID;
-
-			pDevice->GetVertexShaderConstantF(158, ViewProjectionMatrix, 4);
+			pDevice->GetVertexShaderConstantF(158, viewProjectionMatrix, 4);
 			pDevice->GetVertexShaderConstantF(177, world, 1);
-
+		
+			printMatrix(viewProjectionMatrix);
+			printMatrix(viewProjectionMatrix);
+			a = false;
 			pDevice->DrawIndexedPrimitive(Type, Base, Min, Num, Start, Prim);
 		}
 
-		if (iStride == stride && number == 1)
+		if (68 == stride && number == 1)
 		{
 			number = 0;
-
-			///*for (size_t i = 0; i < 10; i++)
-			//{
-			//	pDevice->SetTexture(i, cFront);
-			//}*/
-			//
-			///*pDevice->SetRenderState(D3DRS_ZENABLE, true);*/
-			/////*pDevice->SetRenderState(D3DRS_ZFUNC, D3DCMP_NEVER);*/
-			//pDevice->DrawIndexedPrimitive(Type, Base, Min, Num, Start, Prim);
-			//
 		}
 	}
 
 	return oDIP(pDevice, Type, Base, Min, Num, Start, Prim);
 }
 
-HRESULT WINAPI hkReset(DWORD RenderTargetIndex, IDirect3DSurface9 *pRenderTarget)
-{
-
-
-	return hkReset(RenderTargetIndex, pRenderTarget);
-}
-
-bool bCompare(const BYTE* pData, const BYTE* bMask, const char* szMask)
-{
-	for (; *szMask; ++szMask, ++pData, ++bMask)
-		if (*szMask == 'x' && *pData != *bMask)
-			return false;
-	return (*szMask) == NULL;
-}
-
-DWORD FindPattern(DWORD dValor, DWORD dLer, BYTE *bMaskara, char * szMaskara)
-{
-	for (DWORD i = 0; i < dLer; i++)
-		if (bCompare((PBYTE)(dValor + i), bMaskara, szMaskara))
-			return (DWORD)(dValor + i);
-	return false;
-}
-
 DWORD WINAPI HookD3D(LPVOID lpParameter)
 {
-	DWORD dwDXDevice = FindPattern((DWORD)GetModuleHandle("d3d9.dll"), 0x128000, (PBYTE)"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
+	Utility utility;
+	DWORD dwDXDevice = utility.FindPattern((DWORD)GetModuleHandle("d3d9.dll"), 0x128000, (PBYTE)"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
+	DWORD* pdwVTable;
 	memcpy(&pdwVTable, (VOID*)(dwDXDevice + 2), 4);
-	cout << pdwVTable[82];
+
 	oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
 	oDIP = (tDIP)DetourFunction((PBYTE)pdwVTable[82], (PBYTE)hkDIP);
-	/*oReset = (tReset)DetourFunction((PBYTE)pdwVTable[17], (PBYTE)hkReset);*/
 
 	return 0;
 }
