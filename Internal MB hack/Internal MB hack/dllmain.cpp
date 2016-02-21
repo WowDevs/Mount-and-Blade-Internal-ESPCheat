@@ -19,6 +19,7 @@
 using namespace std;
 
 LPDIRECT3DTEXTURE9 pTx,green,red;
+
 D3DLOCKED_RECT d3dlr;
 Directx9Hack directx9Hack;
 D3DVIEWPORT9 vpt;
@@ -26,7 +27,7 @@ LPD3DXFONT pFont;
 UINT iBaseTex;
 char strbuff[260];
 int number;
-bool a, color, chams;
+bool a=true, color=true, chams=true;
 
 typedef HRESULT(WINAPI* tEndScene)(LPDIRECT3DDEVICE9 pDevice);
 tEndScene oEndScene;
@@ -34,9 +35,10 @@ tEndScene oEndScene;
 typedef HRESULT(WINAPI* tDIP)(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base, UINT Min, UINT Num, UINT Start, UINT Prim);
 tDIP oDIP;
 
-void printMatrix(D3DXMATRIX matrix)
+void printMatrix(D3DXMATRIX matrix,float x,float y, D3DXMATRIX matrix2)
 {
 	if (a) {
+		printf("\n");
 		printf("ViewProjectionWorldMatrix \n");
 		for (size_t i = 0; i < 4; i++)
 		{
@@ -46,7 +48,15 @@ void printMatrix(D3DXMATRIX matrix)
 			}
 			printf("\n");
 		}
+		printf("\n %f , %f", x, y);
 		printf("\n");
+		printf("VcameraPos");
+		for (size_t t = 0; t < 4; t++)
+		{
+			printf("\t %f", matrix2.m[0][t]);
+		}
+		cout << "\n";
+		Sleep(200);
 	}
 }
 
@@ -55,7 +65,6 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 	if (color)
 	{
 		directx9Hack.GenerateTexture(pDevice, &red, D3DCOLOR_ARGB(255, 255, 0, 0));
-
 		color = false;
 	}
 
@@ -63,37 +72,6 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 	{
 		chams = !chams;
 	}
-
-	pDevice->GetViewport(&vpt);
-
-	RECT FRect = { vpt.Width - 250,vpt.Height - 300,
-		vpt.Width,vpt.Height };
-
-	if (green == NULL)
-		if (pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A8R8G8B8,
-			D3DPOOL_DEFAULT, &green, NULL) == S_OK)
-			if (pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A8R8G8B8,
-				D3DPOOL_SYSTEMMEM, &pTx, NULL) == S_OK)
-				if (pTx->LockRect(0, &d3dlr, 0, D3DLOCK_DONOTWAIT |
-					D3DLOCK_NOSYSLOCK) == S_OK)
-				{
-					for (UINT xy = 0; xy < 8 * 8; xy++)
-						((PDWORD)d3dlr.pBits)[xy] = 0xFF00FF00;
-
-					pTx->UnlockRect(0);
-					pDevice->UpdateTexture(pTx, green);
-					pTx->Release();
-				}
-
-	if (pFont == NULL)
-		D3DXCreateFontA(pDevice, 16, 0, 700, 0, 0, 1, 0,
-			0, DEFAULT_PITCH | FF_DONTCARE, "Calibri", &pFont);
-
-	sprintf(strbuff, "", iBaseTex + 1);
-
-if (pFont)
-	pFont->DrawTextA(0, strbuff, -1, &FRect,
-		DT_CENTER | DT_NOCLIP, 0xFF00FF00);
 
 if (GetAsyncKeyState(VK_NUMPAD3) & 1)
 	iBaseTex++;
@@ -126,16 +104,26 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 				pDevice->SetTexture(i, red);
 			}
 
+			directx9Hack.doDisassembleShader(pDevice, "shader.txt");
+			D3DVIEWPORT9 Viewport;
+			D3DXMATRIX ViewProjectionMatrix, LocalToWorld, WorldToLocal;
+			D3DXVECTOR3 Vector3D(0, 0, 0), Vector2D;
+			pDevice->GetVertexShaderConstantF(159, ViewProjectionMatrix, 4);//change this to match your game matrix
+			pDevice->GetVertexShaderConstantF(174, LocalToWorld, 1);//change this to match your game matrix
+			pDevice->GetViewport(&Viewport);
+			D3DXMatrixIdentity(&WorldToLocal);
+			D3DXVec3Project(&Vector2D, &Vector3D, &Viewport, &ViewProjectionMatrix, &LocalToWorld, &WorldToLocal);
+			/*if (Vector2D.z < 1.0f)
+			{*/
+				printMatrix(ViewProjectionMatrix, Vector2D.x, Vector2D.y,LocalToWorld);
+
+				//printMatrix(LocalToWorld, Vector2D.x, Vector2D.y, LocalToWorld);
+
+				
+			/*}
+			*/
+			/*a = false;*/
 			number = 1;
-
-			D3DXMATRIX viewProjectionMatrix,world;
-
-			pDevice->GetVertexShaderConstantF(158, viewProjectionMatrix, 4);
-			pDevice->GetVertexShaderConstantF(177, world, 1);
-		
-			printMatrix(viewProjectionMatrix);
-			printMatrix(viewProjectionMatrix);
-			a = false;
 			pDevice->DrawIndexedPrimitive(Type, Base, Min, Num, Start, Prim);
 		}
 
