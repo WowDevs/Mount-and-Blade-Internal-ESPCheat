@@ -1,8 +1,0 @@
-﻿C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(392,5): warning MSB8028: The intermediate directory (Debug\) contains files shared from another project (ConsoleApplication2.vcxproj).  This can lead to incorrect clean and rebuild behavior.
-  stdafx.cpp
-  Utility.cpp
-  dllmain.cpp
-c:\users\frank\desktop\c++ mount&blade hack\mountandblade hack\mountandblade hack\dllmain.cpp(272): error C2664: 'HMODULE GetModuleHandleW(LPCWSTR)': cannot convert argument 1 from 'const char [9]' to 'LPCWSTR'
-  c:\users\frank\desktop\c++ mount&blade hack\mountandblade hack\mountandblade hack\dllmain.cpp(272): note: Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
-c:\users\frank\desktop\c++ mount&blade hack\mountandblade hack\mountandblade hack\dllmain.cpp(293): error C2664: 'HMODULE GetModuleHandleW(LPCWSTR)': cannot convert argument 1 from 'LPCSTR' to 'LPCWSTR'
-  c:\users\frank\desktop\c++ mount&blade hack\mountandblade hack\mountandblade hack\dllmain.cpp(293): note: Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
