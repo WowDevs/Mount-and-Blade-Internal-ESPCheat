@@ -202,10 +202,7 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 	if (pDevice->GetStreamSource
 		(0, &streamData, &offset, &stride) == S_OK)
 		streamData->Release();
-	__asm
-	{
-		int 3
-	}
+	
 	if (chams)
 	{
 		if (iStride == stride && number == 0)
@@ -220,7 +217,11 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 			number = 1;
 
 			doDisassembleShader(pDevice, "shader.txt");
-			D3DXMATRIX projection, view, world, ID;
+
+			D3DXMATRIX ViewProjectionMatrix, view, world, ID;
+
+			pDevice->GetVertexShaderConstantF(158, ViewProjectionMatrix, 4);
+			pDevice->GetVertexShaderConstantF(177, world, 1);
 
 			pDevice->DrawIndexedPrimitive(Type, Base, Min, Num, Start, Prim);
 		}
@@ -272,8 +273,8 @@ DWORD WINAPI HookD3D(LPVOID lpParameter)
 	DWORD dwDXDevice = FindPattern((DWORD)GetModuleHandle("d3d9.dll"), 0x128000, (PBYTE)"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
 	memcpy(&pdwVTable, (VOID*)(dwDXDevice + 2), 4);
 	cout << pdwVTable[82];
-	/*oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);*/
-	/*oDIP = (tDIP)DetourFunction((PBYTE)pdwVTable[82], (PBYTE)hkDIP);*/
+	oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
+	oDIP = (tDIP)DetourFunction((PBYTE)pdwVTable[82], (PBYTE)hkDIP);
 	/*oReset = (tReset)DetourFunction((PBYTE)pdwVTable[17], (PBYTE)hkReset);*/
 
 	return 0;
