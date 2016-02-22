@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <Text Include="..\..\Shaders.txt" />
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
