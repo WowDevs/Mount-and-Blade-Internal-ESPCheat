@@ -44,7 +44,7 @@ void Directx9Hack::doDisassembleShader(LPDIRECT3DDEVICE9 pDevice, char* FileName
 
 	D3DXDisassembleShader(reinterpret_cast<DWORD*>(pData), (BOOL)NULL, (LPCSTR)NULL, &bOut);
 
-	oLogFile << static_cast<char*>(bOut->GetBufferPointer()) << std::endl;
+	oLogFile << "abc" << static_cast<char*>(bOut->GetBufferPointer()) << std::endl;
 	oLogFile.close();
 
 	delete[] pData;

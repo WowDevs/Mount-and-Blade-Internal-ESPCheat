@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "Utility.h"
 #include "Directx9Hack.h"
+#include "FileDumper.h"
 #include <detours.h>
 #include <windows.h>
 #include <vector>
@@ -15,22 +16,27 @@
 #include <d3d9.h>
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "d3d9.lib")
+#pragma intrinsic(_ReturnAddress)
 
 using namespace std;
 
 LPDIRECT3DTEXTURE9 pTx,green,red;
-
+FileDumper* fileDumper;
 D3DLOCKED_RECT d3dlr;
 Directx9Hack directx9Hack;
 D3DVIEWPORT9 vpt;
 LPD3DXFONT pFont;
+void* g_SelectedAddress = NULL;
 UINT iBaseTex;
 char strbuff[260];
 int number;
 bool a=true, color=true, chams=true;
+UINT iStride;
 int x;
 int y;
-
+int g_Index = -1;
+int numbers;
+D3DXMATRIX* viewmatrix, projmatrix, result;
 struct ModelInfo_t
 {
 	int X, Y, Team;
@@ -44,6 +50,8 @@ tEndScene oEndScene;
 
 typedef HRESULT(WINAPI* tDIP)(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base, UINT Min, UINT Num, UINT Start, UINT Prim);
 tDIP oDIP;
+
+std::vector<void*>                    g_Vector;
 
 struct SD3DVertex {
 	float x, y, z, rhw;
@@ -60,6 +68,7 @@ void Circle(LPDIRECT3DDEVICE9 pDevice, int x, int y, int radius, int points, D3D
 
 void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 {
+	int numbers = 0;
 	if (ModelInfo.size() != NULL)
 	{
 		for (int i = 0; i < ModelInfo.size(); i++)
@@ -74,37 +83,6 @@ void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 		}
 	}
 	else { return; }
-}
-
-void printMatrix(D3DXMATRIX matrix,float x,float y, D3DXMATRIX matrix2)
-{
-	if (a) {
-		printf("\n");
-		printf("ViewProjectionWorldMatrix \n");
-		for (size_t i = 0; i < 4; i++)
-		{
-			for (size_t t = 0; t < 4; t++)
-			{
-				cout << "\t" << matrix.m[t][i];
-			}
-			printf("\n");
-		}
-		printf("\n %f , %f", x, y);
-		printf("\n");
-
-		printf("VcameraPos\n");
-		for (size_t i = 0; i < 4; i++)
-		{
-			for (size_t t = 0; t < 4; t++)
-			{
-				cout << "\t" << matrix2.m[t][i];
-			}
-			printf("\n");
-		}
-
-		cout << "\n";
-		Sleep(200);
-	}
 }
 
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
@@ -122,15 +100,46 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 
 	RenderNames(pDevice);
 	ModelInfo.clear();
-
-//if (GetAsyncKeyState(VK_NUMPAD3) & 1)
-//	iBaseTex++;
 //
-//if (GetAsyncKeyState(VK_NUMPAD4) & 1)
-//	if (iBaseTex > 0)
-//		iBaseTex--;
+
+	if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
+		if (g_Index != g_Vector.size() - 1)
+		{
+			g_Index++;
+			g_SelectedAddress = g_Vector[g_Index];
+		}
+	}
+	
+	if (GetAsyncKeyState(VK_NUMPAD2) & 1) {
+		if (g_Index >= 0)
+		{
+			g_Index--;
+			g_SelectedAddress = g_Vector[g_Index];
+			if (g_Index == -1)
+				g_SelectedAddress = NULL;
+		}
+	}
+
+
+	/*if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
+		iStride++;
+		printf("%i stride, %i base", iStride, iBaseTex);
+	}
+
+if (GetAsyncKeyState(VK_NUMPAD2) & 1)
+		iStride--;*/
 
 	return oEndScene(pDevice);
+}
+
+bool IsAddressPresent(void* Address)
+{
+	for (auto it = g_Vector.begin(); it != g_Vector.end(); ++it)
+	{
+		if (*it == Address)
+			return true;
+	}
+	return false;
 }
 
 HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base, UINT Min, UINT Num, UINT Start, UINT Prim)
@@ -145,7 +154,7 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 	
 	if (!chams)
 	{
-		if (68 == stride && number == 0)
+		if (64 == stride && number == 0)
 		{
 			pDevice->SetRenderState(D3DRS_ZENABLE, false);
 
@@ -153,25 +162,23 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 			{
 				pDevice->SetTexture(i, red);
 			}
-
-			directx9Hack.doDisassembleShader(pDevice, "shader.txt");
 			D3DVIEWPORT9 Viewport;
 			D3DXMATRIX ViewProjectionMatrix, LocalToWorld, WorldToLocal;
 			D3DXVECTOR3 Vector3D(0, 0, 0), Vector2D;
-			pDevice->GetVertexShaderConstantF(159, ViewProjectionMatrix, 4);
+			pDevice->GetVertexShaderConstantF(163, ViewProjectionMatrix, 4);
 			pDevice->GetVertexShaderConstantF(174, LocalToWorld, 1);
 			pDevice->GetViewport(&Viewport);
-
+			/*fileDumper->DumpMatrix(ViewProjectionMatrix, numbers);*/
 			D3DXMatrixIdentity(&WorldToLocal);
 			D3DXVec3Project(&Vector2D, &Vector3D, &Viewport, &ViewProjectionMatrix, &LocalToWorld, &WorldToLocal);
 
+			cout << ViewProjectionMatrix._11 << endl;
+			Sleep(200);
 			/*if (Vector2D.z < 1.0f)
 			{*/
 			ModelInfo_t pModelInfo = { static_cast<int>(Vector2D.x),static_cast<int>(Vector2D.y),0,""};
 			ModelInfo.push_back(pModelInfo);
-			printMatrix(ViewProjectionMatrix, Vector2D.x, Vector2D.y, LocalToWorld);
 
-				
 			/*}
 			*/
 			a = false;
@@ -179,10 +186,11 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 			pDevice->DrawIndexedPrimitive(Type, Base, Min, Num, Start, Prim);
 		}
 
-		if (68 == stride && number == 1)
-		{
+		if (64 == stride && number == 1)
+		{	
 			number = 0;
 		}
+
 	}
 
 	return oDIP(pDevice, Type, Base, Min, Num, Start, Prim);
@@ -190,13 +198,27 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 
 DWORD WINAPI HookD3D(LPVOID lpParameter)
 {
+	fileDumper = new FileDumper("Matrix.txt");
 	Utility utility;
 	DWORD dwDXDevice = utility.FindPattern((DWORD)GetModuleHandle("d3d9.dll"), 0x128000, (PBYTE)"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86", "xx????xx????xx");
 	DWORD* pdwVTable;
 	memcpy(&pdwVTable, (VOID*)(dwDXDevice + 2), 4);
 
-	oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
+	/*oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
 	oDIP = (tDIP)DetourFunction((PBYTE)pdwVTable[82], (PBYTE)hkDIP);
+*/
+	viewmatrix = (D3DXMATRIX*) 0xC7BFB18;
+	//projmatrix = *(D3DXMATRIX*) 0xC3EFB18;
+
+	/*fileDumper->DumpMatrix(viewmatrix,1);
+	fileDumper->DumpMatrix(projmatrix,2);*/
+	float notthis = viewmatrix->_11;
+	while (true) {
+		if (viewmatrix->_11 > -1 && viewmatrix->_11 < 1 && viewmatrix->_11 != notthis)
+			/*fileDumper->DumpMatrix(viewmatrix,1);*/
+			std::cout << "\t" << viewmatrix->_11;
+		//std::cout << "\t" << viewmatrix->_12 << endl;
+	}
 
 	return 0;
 }
