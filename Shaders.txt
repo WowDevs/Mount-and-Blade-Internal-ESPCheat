@@ -13,7 +13,7 @@
 //   ---------------- ----- ----
 //   iLightIndices    c0       4
 //   iLightPointCount c4       1
-//
+
 //
 // Default values:
 //
