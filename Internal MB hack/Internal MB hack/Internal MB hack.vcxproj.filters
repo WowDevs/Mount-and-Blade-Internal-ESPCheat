@@ -82,4 +82,15 @@
   <ItemGroup>
     <Library Include="detours.lib" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="..\..\..\..\..\Pictures\viewmatrix2.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\..\..\Pictures\viewmatrix3.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\..\..\..\Pictures\test.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

@@ -22,14 +22,14 @@
 #pragma intrinsic(_ReturnAddress)
 
 
-LPDIRECT3DTEXTURE9 pTx,green,red;
+LPDIRECT3DTEXTURE9 pTx, green, red;
 FileDumper* fileDumper;
 D3DLOCKED_RECT d3dlr;
 Directx9Hack directx9Hack;
 LPD3DXFONT pFont;
 UINT iBaseTex;
 int number;
-bool a=true, color=true, chams=true,c=true;
+bool a = true, color = true, chams = true, c = true;
 UINT iStride;
 int g_Index = -1;
 int numbers;
@@ -39,10 +39,12 @@ MainPlayer mainPlayer;
 LPDIRECT3DVERTEXBUFFER9 pStreamData;
 std::vector<Player*> cPlayerBase;
 DWORD playerPointer;
-D3DXMATRIX* viewmatrix;
-D3DXMATRIX* projmatrix;
 D3DVIEWPORT9 Viewport;
+LPDIRECT3DDEVICE9 pDevice;
+D3DXMATRIX* view;
+D3DXMATRIX* proj;
 int numbert = 0;
+bool trigger = true;
 struct ModelInfo_t
 {
 	int X, Y, Team;
@@ -57,11 +59,12 @@ tEndScene oEndScene;
 typedef HRESULT(WINAPI* tDIP)(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base, UINT Min, UINT Num, UINT Start, UINT Prim);
 tDIP oDIP;
 
-typedef HRESULT(WINAPI* tD3DXMatrixMultiply)( _Inout_ D3DXMATRIX *pOut, _In_ D3DXMATRIX *pM1, _In_ D3DXMATRIX *pM2);
+typedef HRESULT(WINAPI* tD3DXMatrixMultiply)(_Inout_ D3DXMATRIX *pOut, _In_ D3DXMATRIX *pM1, _In_ D3DXMATRIX *pM2);
 tD3DXMatrixMultiply oD3DXMatrixMultiply;
 
 std::vector<void*> g_Vector;
-void printmatrix(char* name,D3DXMATRIX* matrix) 
+
+void printmatrix(char* name, D3DXMATRIX* matrix)
 {
 	std::cout << "This is the " << name << "call\n";
 	for (size_t i = 0; i < 4; i++)
@@ -90,7 +93,7 @@ void SavingPlayer(UINT32 playerPointer)
 {
 	Player* player = new Player(playerPointer);
 
-	if (!ContainsPlayer(player) && player->active == 1 && player->health > 0)
+	if (!ContainsPlayer(player) && player->active == 1 && player->health > 0 && playerPointer != (UINT32)mainPlayer.pointer)
 	{
 		cPlayerBase.push_back(player);
 	}
@@ -122,94 +125,86 @@ __declspec (naked) void ourFunc()
 	}
 }
 
-D3DXVECTOR2* get2dPoint(D3DXVECTOR3 point3D, D3DXMATRIX* viewMatrix, D3DXMATRIX* projectionMatrix, int width, int height) {
-
-	D3DXMATRIX viewProjectionMatrix;
-	D3DXMatrixMultiply(&viewProjectionMatrix,projectionMatrix,viewMatrix);
-	//transform world to clipping coordinates
-	D3DXVECTOR3 Vector3D;
-	D3DXVec3TransformCoord(&Vector3D,&point3D,&viewProjectionMatrix);
-
-	int winX = (int)round(((Vector3D.x + 1) / 2.0) *
-		width);
-	//we calculate -point3D.getY() because the screen Y axis is
-	//oriented top->down 
-	int winY = (int)round(((1 - Vector3D.y) / 2.0) *
-		height);
-	return new D3DXVECTOR2(winX, winY);
-}
-
 void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 {
-	int numbers = 0;
-	if (ModelInfo.size() != NULL)
+	if (cPlayerBase.size() != NULL)
 	{
-		for (int i = 0; i < ModelInfo.size(); i++)
+		D3DXVECTOR3 vector2;
+		D3DXMATRIX WorldToLocal;
+		D3DXMatrixIdentity(&WorldToLocal);
+		for (int i = 0; i < cPlayerBase.size(); i++)
 		{
-			D3DRECT rec;
-			rec.x1 = ModelInfo[i].X;
-			rec.y1 = ModelInfo[i].Y;
-			rec.x2 = ModelInfo[i].X + 5;
-			rec.y2 = ModelInfo[i].Y + 5;
 
-			pDevice->Clear(1, &rec, D3DCLEAR_TARGET, D3DCOLOR_ARGB(232, 100, 145, 30), 0, 0);
+			D3DXVECTOR3 vector3(cPlayerBase[i]->vec[0], cPlayerBase[i]->vec[1], cPlayerBase[i]->vec[2]);
+			D3DXVec3Project(&vector2, &vector3, &Viewport, view,proj, &WorldToLocal);
+			/*std::cout << "lkljkjlkjl\n\n";*/
+			D3DRECT rec;
+			/*if (cPlayerBase[i]->vec2Dpoint[0] != 0) {*/
+				rec.x1 = cPlayerBase[i]->vec2Dpoint[0];
+				rec.y1 = cPlayerBase[i]->vec2Dpoint[1];
+				rec.x2 = rec.x1 + 5;
+				rec.y2 = rec.y1 + 5;
+				pDevice->Clear(1, &rec, D3DCLEAR_TARGET, D3DCOLOR_ARGB(232, 100, 145, 30), 0, 0);
+			/*}*/
 		}
 	}
 	else { return; }
 }
 
-HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
+HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice2)
 {
-	if (color)
+	pDevice = pDevice2;
+	trigger = false;
+	/*if (color)
 	{
 		directx9Hack.GenerateTexture(pDevice, &red, D3DCOLOR_ARGB(255, 255, 0, 0));
 		color = false;
-	}
+	}*/
 
-	
-
-//
-//	RenderNames(pDevice);
-//	ModelInfo.clear();
-////
-//
-//	if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
-//		if (g_Index != g_Vector.size() - 1)
-//		{
-//			g_Index++;
-//			g_SelectedAddress = g_Vector[g_Index];
-//		}
-//	}
-//	
-//	if (GetAsyncKeyState(VK_NUMPAD2) & 1) {
-//		if (g_Index >= 0)
-//		{
-//			g_Index--;
-//			g_SelectedAddress = g_Vector[g_Index];
-//			if (g_Index == -1)
-//				g_SelectedAddress = NULL;
-//		}
-//	}
-//
-//
-//	/*if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
-//		iStride++;
-//		printf("%i stride, %i base", iStride, iBaseTex);
-//	}
-//
-//if (GetAsyncKeyState(VK_NUMPAD2) & 1)
-//		iStride--;*/
+	//
+	//	RenderNames(pDevice);
+	//	ModelInfo.clear();
+	////
+	//
+	//	if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
+	//		if (g_Index != g_Vector.size() - 1)
+	//		{
+	//			g_Index++;
+	//			g_SelectedAddress = g_Vector[g_Index];
+	//		}
+	//	}
+	//	
+	//	if (GetAsyncKeyState(VK_NUMPAD2) & 1) {
+	//		if (g_Index >= 0)
+	//		{
+	//			g_Index--;
+	//			g_SelectedAddress = g_Vector[g_Index];
+	//			if (g_Index == -1)
+	//				g_SelectedAddress = NULL;
+	//		}
+	//	}
+	//
+	//
+	//	/*if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
+	//		iStride++;
+	//		printf("%i stride, %i base", iStride, iBaseTex);
+	//	}
+	//
+	//if (GetAsyncKeyState(VK_NUMPAD2) & 1)
+	//		iStride--;*/
 
 	mainPlayer.CheckPlayer();
 	CheckDataStorage();
+
 	pDevice->GetViewport(&Viewport);
-	for (int i = 0; i < cPlayerBase.size(); i++)
+	RenderNames(pDevice2);
+	/*for (int i = 0; i < cPlayerBase.size(); i++)
 	{
 
-	
+
 	D3DXMATRIX WorldToLocal;
 	D3DXVECTOR3 Vector3D(cPlayerBase[i]->vec[0], cPlayerBase[i]->vec[1], cPlayerBase[i]->vec[2]), Vector2D;
-	
+
 	D3DXMatrixIdentity(&WorldToLocal);
 
 	D3DXVec3Project(&Vector2D, &Vector3D, &Viewport, viewmatrix,projmatrix, &WorldToLocal);
@@ -221,78 +216,99 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 
 	pDevice->Clear(1, &rec, D3DCLEAR_TARGET, D3DCOLOR_ARGB(232, 100, 145, 30), 0, 0);
 	}
-	
+	*/
 
 	return oEndScene(pDevice);
 }
 
 HRESULT WINAPI hkD3DXMatrixMultiply(_Inout_ D3DXMATRIX *pOut, _In_ D3DXMATRIX *pM1, _In_ D3DXMATRIX *pM2)
 {
-	if (GetAsyncKeyState(VK_F1))
-	{
-		numbert++;
-	}
-
+	numbert++;
+	
 	D3DXVECTOR3 vector2;
 	D3DXMATRIX WorldToLocal;
-
 	D3DXMatrixIdentity(&WorldToLocal);
-
 	for (int i = 0; i < cPlayerBase.size(); i++)
 	{
-
+	
 		D3DXVECTOR3 vector3(cPlayerBase[i]->vec[0], cPlayerBase[i]->vec[1], cPlayerBase[i]->vec[2]);
 
-	switch (numbert) {
-	case 1:
-		std::cout << "First time called\n\n";
-		std::cout << "Height " << Viewport.Height << " Width " << Viewport.Width << "\n";
-		/*printmatrix("the first argument (projviewmatrix?)", pOut);
-		printmatrix("the second argument (viewmatrix?)", pM1);
-		printmatrix("the thirde argument (projectionmatrix?)", pM2);*/
-		/*vector2 = get2dPoint(vector3, pM1, pM2, 480, 640);*/
-		std::cout << "The x value " << vector3.x << " The Y value " << vector3.y << "\n";
-		D3DXVec3Project(&vector2, &vector3, &Viewport, projmatrix,viewmatrix, &WorldToLocal);
-		std::cout << "The X " << vector2.x << " The Y " << vector2.y << "\n";
-		break;
-	case 2:
-		std::cout << "second time called\n\n";
-		/*printmatrix("the first argument (projviewmatrix?)", pOut);
-		printmatrix("the second argument (viewmatrix?)", pM1);
-		printmatrix("the thirde argument (projectionmatrix?)", pM2);*/
-		std::cout << "The x value " << vector3.x << " The Y value " << vector3.y << "\n";
-		D3DXVec3Project(&vector2, &vector3, &Viewport, projmatrix, viewmatrix, &WorldToLocal);
-		std::cout << "The X " << vector2.x << " The Y " << vector2.y << "\n";
-		break;
-	case 3:
-		std::cout << "third time called\n\n";
-		/*printmatrix("the first argument (projviewmatrix?)", pOut);
-		printmatrix("the second argument (viewmatrix?)", pM1);
-		printmatrix("the thirde argument (projectionmatrix?)", pM2);*/
-		std::cout << "The x value " << vector3.x << " The Y value " << vector3.y << "\n";
-		D3DXVec3Project(&vector2, &vector3, &Viewport, projmatrix, viewmatrix, &WorldToLocal);
-		std::cout << "The X " << vector2.x << " The Y " << vector2.y << "\n";
-		break;
-	case 4:
-		std::cout << "fourth time called\n\n";
-		/*printmatrix("the first argument (projviewmatrix?)", pOut);
-		printmatrix("the second argument (viewmatrix?)", pM1);
-		printmatrix("the thirde argument (projectionmatrix?)", pM2);*/
-		std::cout << "The x value " << vector3.x << " The Y value " << vector3.y << "\n";
-		D3DXVec3Project(&vector2, &vector3, &Viewport, projmatrix, viewmatrix, &WorldToLocal);
-		std::cout << "The X " << vector2.x << " The Y " << vector2.y << "\n";
-		break;
-	case 5:
-		std::cout << "5 time called\n\n";
-		/*printmatrix("the first argument (projviewmatrix?)", pOut);
-		printmatrix("the second argument (viewmatrix?)", pM1);
-		printmatrix("the thirde argument (projectionmatrix?)", pM2);*/
-		std::cout << "The x value " << vector3.x << " The Y value " << vector3.y << "\n";
-		D3DXVec3Project(&vector2, &vector3, &Viewport, projmatrix, viewmatrix, &WorldToLocal);
-		std::cout << "The X " << vector2.x << " The Y " << vector2.y << "\n";
-		break;
+	//		switch (numbert) 
+	//		{
+	//		case 1:
+			
+		if (!trigger) 
+		{
+			numbert = 0;
+			D3DXVec3Project(&vector2, &vector3, &Viewport, pM2, pM1, &WorldToLocal);
+			cPlayerBase[i]->vec2Dpoint[0] = vector2.x;
+			cPlayerBase[i]->vec2Dpoint[1] = vector2.y;
+			if(i== cPlayerBase.size()-1)
+			trigger = true;
 		}
+	//		/*	
+	//			view = pM2;
+	//			proj = pM1;
+	//			std::cout << vector2.x << " called first " << vector2.y << "\n\n";
+	//			break;
+	//		case 14:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1,pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called second " << vector2.y << "\n\n";
+	//			break;
+	//		case 15:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1,pM2 , &WorldToLocal);
+	//			std::cout << vector2.x << " called third " << vector2.y << "\n\n";
+	//			break;
+	//		case 16:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1,pM2 , &WorldToLocal);
+	//			
+	//			std::cout << vector2.x << " called fourth " << vector2.y << "\n\n";
+	//			break;
+	//		case 17:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called first " << vector2.y << "\n\n";
+	//			break;
+	//		case 18:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM2, pM1, &WorldToLocal);
+	//			std::cout << vector2.x << " called second " << vector2.y << "\n\n";
+	//			break;
+	//		case 19:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called third " << vector2.y << "\n\n";
+	//			break;
+	//		case 20:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called fourth " << vector2.y << "\n\n";
+	//			break;
+	//		case 21:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called first " << vector2.y << "\n\n";
+	//			break;
+	//		case 22:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called second " << vector2.y << "\n\n";
+	//			break;
+	//		case 23:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called third " << vector2.y << "\n\n";
+	//			break;
+	//		case 24:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called first " << vector2.y << "\n\n";
+	//			break;
+	//		case 25:
+	//			D3DXVec3Project(&vector2, &vector3, &Viewport, pM1, pM2, &WorldToLocal);
+	//			std::cout << vector2.x << " called second " << vector2.y << "\n\n";
+	//			break;
+			//}
 	}
+
+	/*std::cout << numbert << "\n\n";*/
+
+	/*if (numbert == 14)
+		{
+			numbert = 0;
+		}*/
 	return oD3DXMatrixMultiply(pOut, pM1, pM2);
 }
 
@@ -305,7 +321,7 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 	if (pDevice->GetStreamSource
 		(0, &streamData, &offset, &stride) == S_OK)
 		streamData->Release();
-	
+
 	if (!chams)
 	{
 		if (64 == stride && number == 0)
@@ -328,7 +344,7 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 			Sleep(200);
 			/*if (Vector2D.z < 1.0f)
 			{*/
-			ModelInfo_t pModelInfo = { static_cast<int>(Vector2D.x),static_cast<int>(Vector2D.y),0,""};
+			ModelInfo_t pModelInfo = { static_cast<int>(Vector2D.x),static_cast<int>(Vector2D.y),0,"" };
 			ModelInfo.push_back(pModelInfo);
 
 			/*}
@@ -339,7 +355,7 @@ HRESULT WINAPI hkDIP(LPDIRECT3DDEVICE9 pDevice, D3DPRIMITIVETYPE Type, INT Base,
 		}
 
 		if (64 == stride && number == 1)
-		{	
+		{
 			number = 0;
 		}
 
@@ -373,15 +389,13 @@ DWORD WINAPI HookD3D(LPVOID lpParameter)
 	playerRetrn = 0x49E451 + 9;
 	JmpPatch((PVOID)ourFunc, (PVOID)playerAddy);
 	oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
-	oDIP = (tDIP)DetourFunction((PBYTE)pdwVTable[82], (PBYTE)hkDIP);
+	/*oDIP = (tDIP)DetourFunction((PBYTE)pdwVTable[82], (PBYTE)hkDIP);*/
 	DWORD D3DXMatrixMultiply = (DWORD)GetProcAddress(GetModuleHandleA("d3dx9_42.dll"), "D3DXMatrixMultiply");
 	Sleep(50);
 	oD3DXMatrixMultiply = (tD3DXMatrixMultiply)DetourFunction((PBYTE)D3DXMatrixMultiply, (PBYTE)hkD3DXMatrixMultiply);
-	
+
 	return 0;
 }
-
-
 
 BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpvReserved)
 {
@@ -396,7 +410,7 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, LPVOID lpvReserved)
 		DisableThreadLibraryCalls(GetModuleHandle((LPCSTR)NULL));
 		CreateThread((LPSECURITY_ATTRIBUTES)NULL, 0, HookD3D, NULL, 0, 0);
 
-		printf("> Threads Active.\n");
+		printf("> Threads Active.\n\n");
 	}
 	else if (dwReason == DLL_PROCESS_DETACH)
 	{
