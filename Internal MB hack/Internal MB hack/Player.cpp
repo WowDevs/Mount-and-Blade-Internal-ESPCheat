@@ -4,11 +4,11 @@
 
 Player::Player(UINT32 playerPointer) : PlayerData(playerPointer)
 {
-	team = *(bool*)playerPointer;
+	team = *(int*)playerPointer;
 }
 
 void Player::checkDataPlayer()
 {
 	CheckData();
-	team = *(bool*)address;
+	team = *(int*)(address + offsets[9]);
 }

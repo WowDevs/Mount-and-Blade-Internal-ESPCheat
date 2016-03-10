@@ -22,5 +22,6 @@ void PlayerData::CheckData()
 		vec[i] = *(float*)(address + offsets[i + 5]);
 	}
 	health = *(float*)(address + offsets[10]);
+
 }
 

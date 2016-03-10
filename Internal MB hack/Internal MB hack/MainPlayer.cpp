@@ -27,5 +27,6 @@ void MainPlayer::CheckPlayer()
 			vec[i] = *(float*)(pointer + offsets[i + 5]);
 		}
 		health = *(float*)(pointer + offsets[10]);
+		team = *(int*)(pointer + offsets[9]);
 	}
 }
