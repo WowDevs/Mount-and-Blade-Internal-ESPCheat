@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "MainPlayer.h"
-
+#include <exception>
 
 MainPlayer::MainPlayer()
 {
@@ -13,15 +13,20 @@ void MainPlayer::CheckPlayer()
 
 	if (newPointer != pointer && newPointer > 0x5000 && 51704380 != newPointer && newPointer != 0)
 	{
-		pointer = newPointer;
+		try {
+			pointer = newPointer;
+		}
+		catch(std::exception& e){
+			return;
+		}
 	}
 
 	if (pointer != 0)
 	{
-		for (int i = 0; i < 3; i++)
-		{
-			vecRotation[i] = *(float*)(pointer + offsets[i + 2]);
-		}
+		//for (int i = 0; i < 3; i++)
+		//{
+		//	/*vecRotation[i] = *(float*)(pointer + offsets[i + 2]);*/
+		//}
 		for (int i = 0; i < 3; i++)
 		{
 			vec[i] = *(float*)(pointer + offsets[i + 5]);

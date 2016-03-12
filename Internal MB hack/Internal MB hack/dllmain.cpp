@@ -37,7 +37,7 @@ bool trigger = false;
 bool secondcheck=true;
 LPD3DXFONT m_font;
 int array[4][4] = { {0,4,8,12},{16,20,24,28},{32,36,40,44},{48,52,56,60} };
-DWORD viewMatrixAddress = 0x00A63470; 
+DWORD viewMatrixAddress = 0x00A63910; 
 DWORD viewMatrixAddress2 = 0xDD9A4C;
 DWORD testreturn;
 int inumber=0;
@@ -155,7 +155,9 @@ void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
 	pDevice->GetViewport(&Viewport);
-
+	if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
+		secondcheck = !secondcheck;
+	}
 	/*if (!secondcheck) {
 		secondcheck = true;
 	}
@@ -226,23 +228,28 @@ D3DXMATRIX* viewMatrix(D3DXMATRIX *pM1)
 	newViewMatrix->_32 = *(float*)(viewMatrixAddress2 + 0x18);
 	newViewMatrix->_33 = *(float*)(viewMatrixAddress2 + 0x28);
 	newViewMatrix->_34 = 0;
-
-	newViewMatrix->_41 = pM1->_41;
-	newViewMatrix->_42 = pM1->_42;
-	newViewMatrix->_43 = pM1->_43;
+	if (secondcheck) {
+		newViewMatrix->_41 = *(float*)(viewMatrixAddress + 0x30);
+		newViewMatrix->_42 = *(float*)(viewMatrixAddress + 0x34)*-1;
+		newViewMatrix->_43 = *(float*)(viewMatrixAddress + 0x38);
+	}
+	else 
+	{
+		return pM1;
+	}
 	newViewMatrix->_44 = 1.0f;
-	printf("Game matrix ");
+	/*printf("Game matrix ");
 	printMatrix(pM1);
 	printf("My matrix ");
-	printMatrix(newViewMatrix);
+	printMatrix(newViewMatrix);*/
 	
-	return pM1;
+	return newViewMatrix;
 }
 
 HRESULT WINAPI hkD3DXMatrixMultiply(_Inout_ D3DXMATRIX *pOut, _In_ D3DXMATRIX *pM1, _In_ D3DXMATRIX *pM2)
 {
 	
-if (!trigger && GetAsyncKeyState(VK_NUMPAD1) & 1)
+if (!trigger)
 	{
 
 	D3DXVECTOR3 vector2;
@@ -252,13 +259,12 @@ if (!trigger && GetAsyncKeyState(VK_NUMPAD1) & 1)
 		for (int i = 0; i < cPlayerBase.size(); i++)
 		{
 			D3DXVECTOR3 vector3(cPlayerBase[i]->vec[0], cPlayerBase[i]->vec[1], cPlayerBase[i]->vec[2]);
-
 			D3DXVec3Project(&vector2, &vector3, &Viewport, pM2, viewMatrix(pM1), &WorldToLocal);
 			cPlayerBase[i]->vec2Dpoint[0] = vector2.x;
 			cPlayerBase[i]->vec2Dpoint[1] = vector2.y;
 			cPlayerBase[i]->vec2Dpoint[2] = vector2.z;
 
-			std::cout << "	X on screen " << vector2.x << " Y on screen "  << vector2.y << std::endl;
+			//std::cout << "	X on screen " << vector2.x << " Y on screen "  << vector2.y << Viewport.Height << std::endl;
 
 			if (i == cPlayerBase.size() - 1)
 				trigger = true;
