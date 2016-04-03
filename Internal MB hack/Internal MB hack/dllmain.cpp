@@ -34,13 +34,13 @@ std::vector<Player*> cPlayerBase;
 DWORD playerPointer;
 D3DVIEWPORT9 Viewport;
 bool trigger = false;
-bool secondcheck=true;
+bool secondcheck = true;
 LPD3DXFONT m_font;
-int array[4][4] = { {0,4,8,12},{16,20,24,28},{32,36,40,44},{48,52,56,60} };
-DWORD viewMatrixAddress = 0x00A63910; 
+int array[4][4] = { { 0,4,8,12 },{ 16,20,24,28 },{ 32,36,40,44 },{ 48,52,56,60 } };
+DWORD viewMatrixAddress = 0x00A63910;
 DWORD viewMatrixAddress2 = 0xDD9A4C;
 DWORD testreturn;
-int inumber=0;
+int inumber = 0;
 int sum = -1;
 float offsets[3]{ 100,100,1 };
 D3DXVECTOR3* goldenKey = new D3DXVECTOR3(offsets);
@@ -55,7 +55,7 @@ tDIP oDIP;
 typedef HRESULT(WINAPI* tD3DXMatrixMultiply)(_Inout_ D3DXMATRIX *pOut, _In_ D3DXMATRIX *pM1, _In_ D3DXMATRIX *pM2);
 tD3DXMatrixMultiply oD3DXMatrixMultiply;
 
-typedef HRESULT(WINAPI* tPresent)(const RECT *pSourceRect,const RECT *pDestRect, HWND hDestWindowOverride, const RGNDATA *pDirtyRegion);
+typedef HRESULT(WINAPI* tPresent)(const RECT *pSourceRect, const RECT *pDestRect, HWND hDestWindowOverride, const RGNDATA *pDirtyRegion);
 tPresent oPresent;
 
 typedef DWORD(__thiscall* HookWorldToScreen)(DWORD this_ptr, DWORD arg1, D3DXVECTOR3* arg2, DWORD arg3);
@@ -108,24 +108,24 @@ void CheckDataStorage()
 
 }
 
-__declspec (naked) void ourFunc()
-{
-	__asm
-	{
-		sub esp, 8
-		fst dword ptr[esi + 0x6000]
-			mov playerPointer, esi
-			PUSHAD
-	}
-
-	SavingPlayer(playerPointer);
-	/*trigger = false;*/
-
-	__asm {
-		POPAD
-			jmp  playerRetrn
-	}
-}
+//__declspec (naked) void ourFunc()
+//{
+//	__asm
+//	{
+//		sub esp, 8
+//		fst dword ptr[esi + 0x6000]
+//			mov playerPointer, esi
+//			PUSHAD
+//	}
+//
+//	SavingPlayer(playerPointer);
+//	/*trigger = false;*/
+//
+//	/*__asm {
+//		POPAD
+//			jmp  playerRetrn
+//	}*/
+//}
 
 void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 {
@@ -138,7 +138,7 @@ void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 				rec.right = cPlayerBase[i]->vec2Dpoint[0];
 				rec.bottom = cPlayerBase[i]->vec2Dpoint[1];
 				rec.left = rec.right - 20;
-				rec.top = rec.bottom  - 20;
+				rec.top = rec.bottom - 20;
 
 				//std::cout << " Size " << cPlayerBase[i]->team << "\n";
 				D3DCOLOR fontColor = D3DCOLOR_ARGB(255, 0, 0, 255);
@@ -159,12 +159,12 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 		secondcheck = !secondcheck;
 	}
 	/*if (!secondcheck) {
-		secondcheck = true;
+	secondcheck = true;
 	}
 
 	if (secondcheck) {
-		trigger = false;
-		secondcheck = false;
+	trigger = false;
+	secondcheck = false;
 	}*/
 
 	//if (color)
@@ -215,7 +215,7 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 D3DXMATRIX* viewMatrix(D3DXMATRIX *pM1)
 {
 	newViewMatrix->_11 = *(float*)viewMatrixAddress2;
-	newViewMatrix->_12 = *(float*)(viewMatrixAddress2+0x10);
+	newViewMatrix->_12 = *(float*)(viewMatrixAddress2 + 0x10);
 	newViewMatrix->_13 = *(float*)(viewMatrixAddress2 + 0x20);
 	newViewMatrix->_14 = 0;
 
@@ -233,7 +233,7 @@ D3DXMATRIX* viewMatrix(D3DXMATRIX *pM1)
 		newViewMatrix->_42 = *(float*)(viewMatrixAddress + 0x34)*-1;
 		newViewMatrix->_43 = *(float*)(viewMatrixAddress + 0x38);
 	}
-	else 
+	else
 	{
 		return pM1;
 	}
@@ -242,19 +242,19 @@ D3DXMATRIX* viewMatrix(D3DXMATRIX *pM1)
 	printMatrix(pM1);
 	printf("My matrix ");
 	printMatrix(newViewMatrix);*/
-	
+
 	return newViewMatrix;
 }
 
 HRESULT WINAPI hkD3DXMatrixMultiply(_Inout_ D3DXMATRIX *pOut, _In_ D3DXMATRIX *pM1, _In_ D3DXMATRIX *pM2)
 {
-	
-if (!trigger)
+
+	if (!trigger)
 	{
 
-	D3DXVECTOR3 vector2;
-	D3DXMATRIX WorldToLocal;
-	D3DXMatrixIdentity(&WorldToLocal);
+		D3DXVECTOR3 vector2;
+		D3DXMATRIX WorldToLocal;
+		D3DXMatrixIdentity(&WorldToLocal);
 
 		for (int i = 0; i < cPlayerBase.size(); i++)
 		{
@@ -307,14 +307,14 @@ if (!trigger)
 //	return oDIP(pDevice, Type, Base, Min, Num, Start, Prim);
 //}
 
-HRESULT WINAPI hkPresent( const RECT *pSourceRect, const RECT *pDestRect, HWND hDestWindowOverride, const RGNDATA *pDirtyRegion)
+HRESULT WINAPI hkPresent(const RECT *pSourceRect, const RECT *pDestRect, HWND hDestWindowOverride, const RGNDATA *pDirtyRegion)
 {
 	trigger = false;
-	
+
 	/*HookWorldToScreen hookWorldToScreen = reinterpret_cast<HookWorldToScreen>(0x0434CA0);
 	DWORD a = hookWorldToScreen(0x8E3120, 0xA633F0, goldenKey,0x0);
 	std::cout << " " << std::hex << a;
-*/
+	*/
 	return oPresent(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 }
 
@@ -341,7 +341,7 @@ DWORD WINAPI HookD3D(LPVOID lpParameter)
 	playerAddy = 0x49E451;
 	playerRetrn = 0x49E451 + 9;
 
-	JmpPatch((PVOID)ourFunc, (PVOID)playerAddy);
+	/*JmpPatch((PVOID)ourFunc, (PVOID)playerAddy);*/
 	oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
 	oPresent = (tPresent)DetourFunction((PBYTE)pdwVTable[17], (PBYTE)hkPresent);
 

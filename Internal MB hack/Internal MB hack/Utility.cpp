@@ -1,6 +1,5 @@
 #include "stdafx.h"
-#include "Utility.h"
-
+#include "Utility.h";
 
 bool Utility::bCompare(const BYTE* pData, const BYTE* bMask, const char* szMask)
 {

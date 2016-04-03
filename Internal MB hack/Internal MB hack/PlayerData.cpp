@@ -9,7 +9,7 @@ PlayerData::PlayerData(UINT32 playerPointer)
 	//8 player 9 team
 }
 
-void PlayerData::CheckData() 
+void PlayerData::CheckData()
 {
 	active = *(bool*)(address + offsets[0]);
 	id = *(int*)(address + offsets[1]);

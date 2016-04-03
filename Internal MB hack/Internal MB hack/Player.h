@@ -1,7 +1,7 @@
 #pragma once
 #include "PlayerData.h"
 
-class Player: public PlayerData
+class Player : public PlayerData
 {
 public:
 	int team;

@@ -16,7 +16,7 @@ void MainPlayer::CheckPlayer()
 		try {
 			pointer = newPointer;
 		}
-		catch(std::exception& e){
+		catch (std::exception& e) {
 			return;
 		}
 	}
