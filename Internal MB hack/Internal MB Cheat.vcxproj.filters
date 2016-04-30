@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Player">
+      <UniqueIdentifier>{46ad1855-84e6-47a0-aea6-94f440d610ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utilities">
+      <UniqueIdentifier>{36b0cde7-3531-4061-9c37-38cbd26e228e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -47,23 +53,23 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Utility.cpp">
+    <ClCompile Include="Consoleapplication1.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="MainPlayer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Player.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Player</Filter>
     </ClCompile>
     <ClCompile Include="PlayerData.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Player</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Source Files\Player</Filter>
     </ClCompile>
     <ClCompile Include="Directx9Hack.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Utilities</Filter>
     </ClCompile>
-    <ClCompile Include="Consoleapplication1.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="Utility.cpp">
+      <Filter>Source Files\Utilities</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

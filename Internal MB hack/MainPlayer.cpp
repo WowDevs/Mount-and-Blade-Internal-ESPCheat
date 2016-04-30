@@ -23,10 +23,10 @@ void MainPlayer::CheckPlayer()
 
 	if (pointer != 0)
 	{
-		//for (int i = 0; i < 3; i++)
-		//{
-		//	/*vecRotation[i] = *(float*)(pointer + offsets[i + 2]);*/
-		//}
+		for (int i = 0; i < 3; i++)
+		{
+		vecRotation[i] = *(float*)(pointer + offsets[i + 2]);
+		}
 		for (int i = 0; i < 3; i++)
 		{
 			vec[i] = *(float*)(pointer + offsets[i + 5]);
