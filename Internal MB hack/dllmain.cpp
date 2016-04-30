@@ -1,6 +1,7 @@
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
+#define _USE_MATH_DEFINES
 
 #include "stdafx.h"
 #include "Utility.h"
@@ -17,8 +18,12 @@
 #include <string>   
 #include <iomanip> 
 #include <sstream>
+#include "MinMax.h"
+//#include "Vector3.h"
+
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "d3d9.lib")
+
 
 LPDIRECT3DTEXTURE9 red;
 D3DLOCKED_RECT d3dlr;
@@ -44,6 +49,7 @@ int inumber = 0;
 int sum = -1;
 float offsets[3]{ 100,100,1 };
 D3DXVECTOR3* goldenKey = new D3DXVECTOR3(offsets);
+
 
 D3DXMATRIX* newViewMatrix = new D3DXMATRIX();
 typedef HRESULT(WINAPI* tEndScene)(LPDIRECT3DDEVICE9 pDevice);
@@ -108,24 +114,23 @@ void CheckDataStorage()
 
 }
 
-//__declspec (naked) void ourFunc()
-//{
-//	__asm
-//	{
-//		sub esp, 8
-//		fst dword ptr[esi + 0x6000]
-//			mov playerPointer, esi
-//			PUSHAD
-//	}
-//
-//	SavingPlayer(playerPointer);
-//	/*trigger = false;*/
-//
-//	/*__asm {
-//		POPAD
-//			jmp  playerRetrn
-//	}*/
-//}
+__declspec (naked) void ourFunc()
+{
+	__asm
+	{
+		sub esp, 8
+		fst dword ptr[esi + 0x6000]
+		mov playerPointer, esi
+		PUSHAD
+	}
+
+	SavingPlayer(playerPointer);
+
+	__asm {
+		POPAD
+		jmp  playerRetrn
+	}
+}
 
 void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 {
@@ -152,9 +157,94 @@ void RenderNames(LPDIRECT3DDEVICE9 pDevice)
 	}
 }
 
+float Rad2Deg(float number)
+{
+	float degree = number *  180 / M_PI;
+	if (degree < 0)
+	{
+		degree += 360;
+	}
+	return degree;
+}
+
+float CalculateDistance(D3DXVECTOR3 vector1, D3DXVECTOR3 vector2)
+{
+	return sqrt(pow((vector1.x - vector2.x), 2) + pow((vector1.y - vector2.y), 2) + pow((vector1.z - vector1.z), 2));
+}
+
+float Length(D3DXVECTOR3 vector)
+{
+	return sqrt(pow(vector.x, 2) + pow(vector.y, 2) + pow(vector.z, 2));
+}
+
+D3DXVECTOR3 Normalize(D3DXVECTOR3 vector)
+{
+	float x = vector.x / Length(vector);
+	float y = vector.y / Length(vector);
+	float z = vector.z / Length(vector);
+	return D3DXVECTOR3(x,y,z);
+}
+
+float CalculateAngle(D3DXVECTOR3 player, D3DXVECTOR3 enemy, D3DXVECTOR3 v)
+{
+	float x = enemy.x - player.x;
+	float y = enemy.y - player.y;
+	float z = enemy.z - player.z;
+
+	//D3DXVECTOR3 direction = Normalize(v);
+	//D3DXVECTOR3 position = Normalize(D3DXVECTOR3(x,y,z));
+	//std::cout << " " << direction.x << " " << direction.y << " " << direction.z << std::endl;
+	//std::cout << " " << position.x << " " << position.y << " " << position.z << std::endl;
+	//std::cout << " " << std::hex << mainPlayer.pointer << std::endl;
+	//return x*v.x + y*v.y + z*v.z;
+
+	return acos( (x*v.x + y*v.y+z*v.z) / ( (Length(D3DXVECTOR3(x, y, z))*Length(v) )));
+}
+
+bool AutoKick()
+{
+	for (size_t i = 0; i < cPlayerBase.size(); i++)
+	{
+		
+		//std::cout << " " << std::hex << mainPlayer.pointer << std::endl;
+		if (cPlayerBase[i]->address != mainPlayer.pointer)
+		{
+			float DistanceToLocalPlayer = CalculateDistance(cPlayerBase[i]->vec, mainPlayer.vec); // vec is X Y Z
+			float number = Rad2Deg(atan2(mainPlayer.vecRotation[1], mainPlayer.vecRotation[0])); // X Y rotation
+			float x = mainPlayer.vecRotation[0];
+			float y = mainPlayer.vecRotation[1];
+			float z = mainPlayer.vecRotation[2];
+			float angle = CalculateAngle(mainPlayer.vec, cPlayerBase[i]->vec, D3DXVECTOR3(x, y, 0));
+			//std::cout << " " << angle * 180 / M_PI << std::endl;
+			if (DistanceToLocalPlayer < 1.0f && angle < 20.0f)
+			{
+				std::cout << " " << "kick" << std::endl;
+				INPUT input[2];
+				memset(input, 0, sizeof(input));
+				input[0].type = INPUT_KEYBOARD;
+
+				input[0].ki.wVk = 0x45; // ASCI value of A
+				input[0].ki.dwFlags = 0;
+				input[0].ki.time = 0;
+				input[0].ki.dwExtraInfo = 0;
+
+				input[1].ki.wVk = 0x45; // ASCI value of A
+				input[1].ki.dwFlags = KEYEVENTF_KEYUP;
+				input[1].ki.time = 0;
+				input[1].ki.dwExtraInfo = 0;
+
+				SendInput(2, input, sizeof(INPUT));
+			}
+		}
+	}
+
+	return true;
+}
+
 HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
 	pDevice->GetViewport(&Viewport);
+
 	if (GetAsyncKeyState(VK_NUMPAD1) & 1) {
 		secondcheck = !secondcheck;
 	}
@@ -205,6 +295,7 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDevice)
 	//		iStride--;*/
 
 	D3DXCreateFont(pDevice, 15, 0, FW_DONTCARE, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Arial"), &m_font);
+	AutoKick();
 	mainPlayer.CheckPlayer();
 	CheckDataStorage();
 	RenderNames(pDevice);
@@ -228,6 +319,7 @@ D3DXMATRIX* viewMatrix(D3DXMATRIX *pM1)
 	newViewMatrix->_32 = *(float*)(viewMatrixAddress2 + 0x18);
 	newViewMatrix->_33 = *(float*)(viewMatrixAddress2 + 0x28);
 	newViewMatrix->_34 = 0;
+
 	if (secondcheck) {
 		newViewMatrix->_41 = *(float*)(viewMatrixAddress + 0x30);
 		newViewMatrix->_42 = *(float*)(viewMatrixAddress + 0x34)*-1;
@@ -238,6 +330,7 @@ D3DXMATRIX* viewMatrix(D3DXMATRIX *pM1)
 		return pM1;
 	}
 	newViewMatrix->_44 = 1.0f;
+
 	/*printf("Game matrix ");
 	printMatrix(pM1);
 	printf("My matrix ");
@@ -315,6 +408,7 @@ HRESULT WINAPI hkPresent(const RECT *pSourceRect, const RECT *pDestRect, HWND hD
 	DWORD a = hookWorldToScreen(0x8E3120, 0xA633F0, goldenKey,0x0);
 	std::cout << " " << std::hex << a;
 	*/
+
 	return oPresent(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 }
 
@@ -341,7 +435,7 @@ DWORD WINAPI HookD3D(LPVOID lpParameter)
 	playerAddy = 0x49E451;
 	playerRetrn = 0x49E451 + 9;
 
-	/*JmpPatch((PVOID)ourFunc, (PVOID)playerAddy);*/
+	JmpPatch((PVOID)ourFunc, (PVOID)playerAddy);
 	oEndScene = (tEndScene)DetourFunction((PBYTE)pdwVTable[42], (PBYTE)hkEndScene);
 	oPresent = (tPresent)DetourFunction((PBYTE)pdwVTable[17], (PBYTE)hkPresent);
 

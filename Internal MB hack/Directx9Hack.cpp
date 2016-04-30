@@ -3,7 +3,7 @@
 
 void Directx9Hack::GenerateTexture(LPDIRECT3DDEVICE9 pDevice, IDirect3DTexture9 **ppD3Dtex, DWORD colour32)
 {
-	if (FAILED(pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A4R4G4B4, D3DPOOL_MANAGED, ppD3Dtex, NULL)));
+	//if (FAILED(pDevice->CreateTexture(8, 8, 1, 0, D3DFMT_A4R4G4B4, D3DPOOL_MANAGED, ppD3Dtex, NULL)));
 
 	WORD colour16 = ((WORD)((colour32 >> 28) & 0xF) << 12)
 		| (WORD)(((colour32 >> 20) & 0xF) << 8)
